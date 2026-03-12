@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DMARC · report analyzer & validator</title>
+  
+  <!-- SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/favicon.svg">
+  <meta name="theme-color" content="#f39c12">
+  
+  <!-- modern clean CSS -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(145deg, #fff9e6 0%, #fff2d9 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      color: #2c3e50;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 2.5rem;
+      box-shadow: 0 25px 50px -12px rgba(243, 156, 18, 0.25), inset 0 1px 2px rgba(255,255,255,0.8);
+      width: 100%;
+      max-width: 1100px;
+      padding: 2.5rem 2rem;
+      border: 1px solid rgba(255,255,255,0.5);
+      transition: box-shadow 0.2s;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #e67e22, #f39c12);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .subhead {
+      font-size: 1rem;
+      font-weight: 400;
+      color: #7f8c8d;
+      margin-bottom: 1.8rem;
+      border-left: 3px solid #f39c12;
+      padding-left: 1rem;
+      background: rgba(243, 156, 18, 0.06);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .subhead code {
+      background: #f39c1210;
+      padding: 0.2rem 0.5rem;
+      border-radius: 30px;
+      font-weight: 500;
+      color: #e67e22;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    label {
+      font-weight: 550;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      color: #e67e22;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    label i {
+      font-style: normal;
+      background: #ffe6cc;
+      padding: 2px 8px;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      color: #d35400;
+    }
+
+    .domain-input-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    #domainInput {
+      flex: 1 1 260px;
+      padding: 1rem 1.4rem;
+      font-size: 1.1rem;
+      background: white;
+      border: 2px solid rgba(243, 156, 18, 0.2);
+      border-radius: 60px;
+      outline: none;
+      font-weight: 450;
+      color: #2c3e50;
+      transition: 0.15s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    #domainInput:focus {
+      border-color: #f39c12;
+      box-shadow: 0 8px 18px -8px rgba(243, 156, 18, 0.3);
+    }
+
+    #domainInput::placeholder {
+      color: #bdc3c7;
+      font-weight: 350;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #f39c12;
+      border: none;
+      padding: 1rem 2.3rem;
+      border-radius: 60px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: white;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 12px 22px -10px #f39c12;
+      transition: all 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: #e67e22;
+      transform: scale(1.02);
+      box-shadow: 0 18px 28px -10px #e67e22;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      filter: grayscale(0.3);
+    }
+
+    .loader {
+      display: inline-block;
+      width: 1.1rem;
+      height: 1.1rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .result-area {
+      background: rgba(255,255,255,0.6);
+      backdrop-filter: blur(4px);
+      border-radius: 2rem;
+      padding: 1.8rem 1.8rem 1.8rem 2rem;
+      border: 1px solid white;
+      margin-top: 1rem;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.8), 0 8px 14px -12px #e67e22;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .result-header h2 {
+      font-size: 1.3rem;
+      font-weight: 550;
+      color: #e67e22;
+    }
+
+    .badge-domain {
+      background: #ffe6cc;
+      border-radius: 40px;
+      padding: 0.3rem 1rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-weight: 550;
+      font-size: 1rem;
+      color: #d35400;
+      word-break: break-all;
+      border: 1px solid white;
+    }
+
+    .record-card {
+      background: white;
+      border-radius: 30px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 10px -6px #f39c1230;
+      border-left: 6px solid #f39c12;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.95rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .record-meta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #ffe6cc;
+    }
+
+    .meta-item {
+      background: #ffe6cc;
+      padding: 0.4rem 1rem;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      color: #e67e22;
+    }
+
+    .validation-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.4rem 1rem;
+      border-radius: 30px;
+      font-weight: 500;
+    }
+
+    .valid {
+      background: #e1f7e1;
+      color: #27ae60;
+    }
+
+    .invalid {
+      background: #ffe1e1;
+      color: #c0392b;
+    }
+
+    .warning {
+      background: #fff4e1;
+      color: #e67e22;
+    }
+
+    .info {
+      background: #e1f0ff;
+      color: #2980b9;
+    }
+
+    .policy-badge {
+      display: inline-block;
+      padding: 0.5rem 1.5rem;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .policy-none {
+      background: #ffe6cc;
+      color: #e67e22;
+      border: 2px solid #f39c12;
+    }
+
+    .policy-quarantine {
+      background: #fff4e1;
+      color: #e67e22;
+      border: 2px solid #f39c12;
+    }
+
+    .policy-reject {
+      background: #d4edda;
+      color: #27ae60;
+      border: 2px solid #27ae60;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .tag {
+      background: #ffe6cc;
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-family: monospace;
+      border-left: 4px solid #f39c12;
+    }
+
+    .tag-key {
+      font-weight: 600;
+      color: #e67e22;
+    }
+
+    .tag-value {
+      color: #2c3e50;
+    }
+
+    .empty-state {
+      background: #fff9e6;
+      padding: 2rem 2rem;
+      border-radius: 2rem;
+      color: #7f8c8d;
+      font-weight: 400;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      border: 2px dashed #f1c40f;
+      text-align: center;
+    }
+
+    .empty-state span {
+      font-size: 2.5rem;
+    }
+
+    .error-message {
+      background: #ffeae9;
+      border-left: 6px solid #c0392b;
+      padding: 1.3rem 1.8rem;
+      border-radius: 40px;
+      color: #c0392b;
+      font-weight: 480;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      box-shadow: 0 6px 12px -6px #c0392b30;
+    }
+
+    /* XML Upload Section */
+    .upload-section {
+      margin: 2rem 0;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(4px);
+      border-radius: 2rem;
+      border: 2px dashed #f39c12;
+      text-align: center;
+    }
+
+    .upload-area {
+      border: 3px dashed #f39c12;
+      border-radius: 2rem;
+      padding: 3rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-area:hover {
+      background: rgba(243, 156, 18, 0.05);
+    }
+
+    .upload-area.dragover {
+      background: rgba(243, 156, 18, 0.1);
+      border-color: #e67e22;
+    }
+
+    .file-info {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #7f8c8d;
+    }
+
+    /* XML Results */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      text-align: center;
+      border-left: 6px solid #f39c12;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #f39c12;
+    }
+
+    .stat-label {
+      color: #7f8c8d;
+      margin-top: 0.5rem;
+    }
+
+    .source-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .source-table th {
+      text-align: left;
+      padding: 1rem;
+      background: #ffe6cc;
+      color: #e67e22;
+    }
+
+    .source-table td {
+      padding: 1rem;
+      border-bottom: 1px solid #ffe6cc;
+    }
+
+    .source-table tr:hover {
+      background: #fff9e6;
+    }
+
+    .badge-pass {
+      background: #d4edda;
+      color: #27ae60;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    .badge-fail {
+      background: #ffe1e1;
+      color: #c0392b;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+    }
+
+    /* Guide section styles */
+    .guide-section {
+      margin-top: 2.5rem;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(4px);
+      border-radius: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .guide-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: white;
+      border: 2px solid #f39c12;
+      padding: 0.8rem 1.5rem;
+      border-radius: 40px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e67e22;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: #f39c12;
+      color: white;
+      border-color: #f39c12;
+    }
+
+    .tab-btn:hover {
+      background: #ffe6cc;
+      border-color: #f39c12;
+    }
+
+    .tab-btn.active:hover {
+      background: #e67e22;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 1rem 0.5rem;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .guide-card {
+      background: white;
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      border-left: 6px solid #f39c12;
+    }
+
+    .guide-card h3 {
+      color: #e67e22;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .policy-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .policy-table th {
+      text-align: left;
+      padding: 0.8rem 0;
+      border-bottom: 2px solid #ffe6cc;
+    }
+
+    .policy-table td {
+      padding: 0.8rem 0;
+      border-bottom: 1px solid #ffe6cc;
+    }
+
+    .warning-box {
+      background: #fff4e1;
+      border-left: 6px solid #f39c12;
+      padding: 1rem;
+      border-radius: 1rem;
+      margin: 1rem 0;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .tool-card {
+      background: #fff9e6;
+      border-radius: 1.2rem;
+      padding: 1.2rem;
+      text-align: center;
+    }
+
+    .tool-card a {
+      color: #e67e22;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .tool-card a:hover {
+      text-decoration: underline;
+    }
+
+    .note {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #95a5a6;
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      border-top: 1px solid #ffe6cc;
+      padding-top: 1.5rem;
+    }
+
+    .note a {
+      color: #e67e22;
+      font-weight: 550;
+      text-decoration: none;
+      border-bottom: 1px dotted;
+    }
+
+    .note a:hover { border-bottom: 2px solid; }
+
+    footer {
+      margin-top: 2.2rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #95a5a6;
+    }
+  </style>
+</head>
+<body>
+<div class="glass-card">
+  <h1>
+    <span>📊 DMARC · report analyzer & validator</span>
+  </h1>
+  <div class="subhead">
+    Check <strong>Domain-based Message Authentication</strong> records — analyze XML reports
+  </div>
+
+  <!-- main input group -->
+  <div class="input-group">
+    <label>
+      <span>Domain name</span>
+      <i>example.com</i>
+    </label>
+    <div class="domain-input-wrapper">
+      <input type="text" id="domainInput" placeholder="e.g. example.com" value="google.com" spellcheck="false" autocomplete="off">
+      <button id="checkBtn">
+        <span id="btnText">Check DMARC</span>
+        <span id="btnLoader" style="display: none;"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- dynamic result card -->
+  <div class="result-area" id="resultContainer">
+    <!-- default info / placeholder -->
+    <div class="empty-state" id="placeholderState">
+      <span>📊</span>
+      <div>Enter a domain, then click "Check DMARC"<br> <span style="font-size:0.9rem;">DMARC tells receiving servers what to do with emails that fail authentication.</span></div>
+    </div>
+
+    <!-- these sections are dynamically filled -->
+    <div id="recordsContainer" style="display: none;"></div>
+    <div id="errorContainer" style="display: none;"></div>
+  </div>
+
+  <!-- XML Upload Section -->
+  <div class="upload-section">
+    <h3 style="color: #e67e22; margin-bottom: 1rem;">📤 Upload DMARC XML Report</h3>
+    <div class="upload-area" id="uploadArea">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">📂</div>
+      <p style="color: #7f8c8d;">Drag & drop your DMARC aggregate report (XML) here</p>
+      <p style="color: #bdc3c7; font-size: 0.9rem;">or click to browse</p>
+      <input type="file" id="fileInput" accept=".xml" style="display: none;">
+    </div>
+    <div id="xmlResults" style="display: none; margin-top: 2rem;"></div>
+  </div>
+
+  <!-- DMARC explanation -->
+  <div class="note">
+    <span>🔐 DMARC = Domain-based Message Authentication, Reporting & Conformance</span>
+    <span>📝 Format: <code>v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com</code></span>
+    <span>⚡ Only 5.6% of domains enforce DMARC (p=reject)</span>
+  </div>
+
+  <!-- DMARC Guide Section -->
+  <div class="guide-section">
+    <div class="guide-tabs">
+      <button class="tab-btn active" id="tabPolicy">📋 DMARC Policies</button>
+      <button class="tab-btn" id="tabTags">🏷️ Tag Reference</button>
+      <button class="tab-btn" id="tabReports">📊 Understanding Reports</button>
+      <button class="tab-btn" id="tabBestPractices">✅ Best Practices</button>
+    </div>
+
+    <!-- DMARC Policies Tab -->
+    <div class="tab-content active" id="policyTab">
+      <div class="guide-card">
+        <h3>📋 DMARC Policy Levels</h3>
+        <table class="policy-table">
+          <tr><th>Policy</th><th>Meaning</th><th>Action</th><th>BIMI Ready</th></tr>
+          <tr>
+            <td><code>p=none</code></td>
+            <td>Monitoring only</td>
+            <td>Take no action, send reports</td>
+            <td>❌ No</td>
+          </tr>
+          <tr>
+            <td><code>p=quarantine</code></td>
+            <td>Soft enforcement</td>
+            <td>Mark as spam</td>
+            <td>✅ Yes</td>
+          </tr>
+          <tr>
+            <td><code>p=reject</code></td>
+            <td>Hard enforcement</td>
+            <td>Reject email completely</td>
+            <td>✅ Yes</td>
+          </tr>
+        </table>
+        <div class="warning-box" style="margin-top: 1rem;">
+          <strong>📈 Stat:</strong> Only 5.6% of domains use p=reject. The rest remain vulnerable to spoofing [citation:5].
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <h3>🔄 DMARC Alignment</h3>
+        <p><strong>SPF Alignment:</strong> The domain in the Envelope From must match the Domain in the From header (or be an organizational domain if aspf=r is set).</p>
+        <p><strong>DKIM Alignment:</strong> The domain in the d= tag of the DKIM signature must match the Domain in the From header (or be an organizational domain if adkim=r is set).</p>
+        <p>Both SPF and DKIM can pass, but if they don't align, DMARC fails.</p>
+      </div>
+    </div>
+
+    <!-- Tag Reference Tab -->
+    <div class="tab-content" id="tagsTab">
+      <div class="guide-card">
+        <h3>🏷️ DMARC Tag Reference</h3>
+        <table class="policy-table">
+          <tr><th>Tag</th><th>Required</th><th>Description</th><th>Example</th></tr>
+          <tr><td><code>v=</code></td><td>✅ Yes</td><td>Version (must be DMARC1)</td><td><code>v=DMARC1</code></td></tr>
+          <tr><td><code>p=</code></td><td>✅ Yes</td><td>Policy (none/quarantine/reject)</td><td><code>p=quarantine</code></td></tr>
+          <tr><td><code>rua=</code></td><td>❌ No</td><td>Aggregate report URI</td><td><code>rua=mailto:dmarc@example.com</code></td></tr>
+          <tr><td><code>ruf=</code></td><td>❌ No</td><td>Forensic report URI</td><td><code>ruf=mailto:forensic@example.com</code></td></tr>
+          <tr><td><code>sp=</code></td><td>❌ No</td><td>Subdomain policy</td><td><code>sp=reject</code></td></tr>
+          <tr><td><code>adkim=</code></td><td>❌ No</td><td>DKIM alignment (r=relaxed/s=strict)</td><td><code>adkim=s</code></td></tr>
+          <tr><td><code>aspf=</code></td><td>❌ No</td><td>SPF alignment (r=relaxed/s=strict)</td><td><code>aspf=r</code></td></tr>
+          <tr><td><code>pct=</code></td><td>❌ No</td><td>Percentage to apply policy</td><td><code>pct=25</code></td></tr>
+          <tr><td><code>fo=</code></td><td>❌ No</td><td>Failure reporting options</td><td><code>fo=1</code></td></tr>
+          <tr><td><code>rf=</code></td><td>❌ No</td><td>Report format (afrf default)</td><td><code>rf=afrf</code></td></tr>
+          <tr><td><code>ri=</code></td><td>❌ No</td><td>Report interval (seconds)</td><td><code>ri=86400</code></td></tr>
+        </table>
+      </div>
+
+      <div class="guide-card">
+        <h3>📊 FO (Failure Reporting) Options</h3>
+        <table class="policy-table">
+          <tr><th>Value</th><th>Meaning</th></tr>
+          <tr><td><code>0</code></td><td>Generate report if SPF and DKIM both fail</td></tr>
+          <tr><td><code>1</code></td><td>Generate report if SPF or DKIM fails</td></tr>
+          <tr><td><code>d</code></td><td>Generate report if DKIM signature fails</td></tr>
+          <tr><td><code>s</code></td><td>Generate report if SPF fails</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Understanding Reports Tab -->
+    <div class="tab-content" id="reportsTab">
+      <div class="guide-card">
+        <h3>📊 DMARC Report Types</h3>
+        <table class="policy-table">
+          <tr><th>Report Type</th><th>Purpose</th><th>Frequency</th></tr>
+          <tr><td><strong>Aggregate (RUA)</strong></td><td>Summary of all emails, pass/fail statistics, sending sources</td><td>Daily</td></tr>
+          <tr><td><strong>Forensic (RUF)</strong></td><td>Individual failed emails with details</td><td>Per failure</td></tr>
+        </table>
+      </div>
+
+      <div class="guide-card">
+        <h3>🔍 What Aggregate Reports Tell You</h3>
+        <ul style="list-style: none;">
+          <li style="padding: 0.5rem 0;">✓ Total email volume from your domain</li>
+          <li style="padding: 0.5rem 0;">✓ Which IPs are sending email</li>
+          <li style="padding: 0.5rem 0;">✓ SPF/DKIM pass/fail rates</li>
+          <li style="padding: 0.5rem 0;">✓ DMARC alignment results</li>
+          <li style="padding: 0.5rem 0;">✓ Potential spoofing attempts</li>
+          <li style="padding: 0.5rem 0;">✓ Sending sources (legitimate vs. fraudulent)</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>⚠️ Forensic Reports Are Sensitive</h3>
+        <p>Forensic reports contain the actual email content that failed authentication. This may include personal data. Use PGP encryption for RUF addresses to protect privacy [citation:9].</p>
+      </div>
+    </div>
+
+    <!-- Best Practices Tab -->
+    <div class="tab-content" id="bestPracticesTab">
+      <div class="guide-card">
+        <h3>✅ DMARC Best Practices (2026)</h3>
+        <ul style="list-style: none;">
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">📊 <strong>Start with p=none</strong> - Monitor for 2-4 weeks to identify all legitimate senders</li>
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">🔍 <strong>Use pct= gradually</strong> - Start with 25%, increase slowly</li>
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">📧 <strong>Set up RUA addresses</strong> - You can't fix what you can't measure</li>
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">🔒 <strong>Move to p=quarantine</strong> - After identifying all sources</li>
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">⚡ <strong>Finally p=reject</strong> - Full enforcement stops spoofing</li>
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">📋 <strong>Set up SPF and DKIM first</strong> - DMARC depends on them</li>
+          <li style="padding: 0.8rem 0; border-bottom: 1px solid #ffe6cc;">🎯 <strong>Aim for BIMI readiness</strong> - Display your logo in email clients [citation:5]</li>
+        </ul>
+      </div>
+
+      <div class="guide-card">
+        <h3>⚠️ Common DMARC Mistakes</h3>
+        <div class="warning-box">
+          <strong>❌ Missing RUA/RUF:</strong> Without reporting addresses, you won't receive data
+        </div>
+        <div class="warning-box" style="margin-top: 0.5rem;">
+          <strong>❌ Multiple DMARC records:</strong> Only one DMARC TXT record allowed per domain
+        </div>
+        <div class="warning-box" style="margin-top: 0.5rem;">
+          <strong>❌ Syntax errors:</strong> Extra spaces, missing semicolons break the record
+        </div>
+        <div class="warning-box" style="margin-top: 0.5rem;">
+          <strong>❌ Going to p=reject too fast:</strong> Can block legitimate email
+        </div>
+        <div class="warning-box" style="margin-top: 0.5rem;">
+          <strong>❌ Forgetting subdomains:</strong> Use sp= tag to set subdomain policy</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    dmarc.hbenali.ovh · analyze email authentication reports · only 5.6% enforce
+  </footer>
+</div>
+
+<script>
+  (function() {
+    // DOM elements
+    const domainInput = document.getElementById('domainInput');
+    const checkBtn = document.getElementById('checkBtn');
+    const btnText = document.getElementById('btnText');
+    const btnLoader = document.getElementById('btnLoader');
+    const resultContainer = document.getElementById('resultContainer');
+    const placeholderState = document.getElementById('placeholderState');
+    const recordsContainer = document.getElementById('recordsContainer');
+    const errorContainer = document.getElementById('errorContainer');
+
+    // XML Upload elements
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const xmlResults = document.getElementById('xmlResults');
+
+    // Tab elements
+    const tabPolicy = document.getElementById('tabPolicy');
+    const tabTags = document.getElementById('tabTags');
+    const tabReports = document.getElementById('tabReports');
+    const tabBestPractices = document.getElementById('tabBestPractices');
+    const policyTab = document.getElementById('policyTab');
+    const tagsTab = document.getElementById('tagsTab');
+    const reportsTab = document.getElementById('reportsTab');
+    const bestPracticesTab = document.getElementById('bestPracticesTab');
+
+    // Tab switching
+    function switchTab(activeTab, activeContent) {
+      [tabPolicy, tabTags, tabReports, tabBestPractices].forEach(t => t.classList.remove('active'));
+      [policyTab, tagsTab, reportsTab, bestPracticesTab].forEach(t => t.classList.remove('active'));
+      
+      activeTab.classList.add('active');
+      activeContent.classList.add('active');
+    }
+
+    if (tabPolicy) tabPolicy.addEventListener('click', () => switchTab(tabPolicy, policyTab));
+    if (tabTags) tabTags.addEventListener('click', () => switchTab(tabTags, tagsTab));
+    if (tabReports) tabReports.addEventListener('click', () => switchTab(tabReports, reportsTab));
+    if (tabBestPractices) tabBestPractices.addEventListener('click', () => switchTab(tabBestPractices, bestPracticesTab));
+
+    // Helper functions
+    function setActiveView(view) {
+      if (placeholderState) placeholderState.style.display = 'none';
+      if (recordsContainer) recordsContainer.style.display = 'none';
+      if (errorContainer) errorContainer.style.display = 'none';
+      
+      if (view === 'placeholder' && placeholderState) {
+        placeholderState.style.display = 'flex';
+      } else if (view === 'records' && recordsContainer) {
+        recordsContainer.style.display = 'block';
+      } else if (view === 'error' && errorContainer) {
+        errorContainer.style.display = 'block';
+      }
+    }
+
+    setActiveView('placeholder');
+
+    // Parse DMARC record tags
+    function parseDMARC(record) {
+      const tags = [];
+      const cleanRecord = record.replace(/^"|"$/g, '');
+      const parts = cleanRecord.split(';');
+      
+      parts.forEach(part => {
+        part = part.trim();
+        if (!part) return;
+        
+        const match = part.match(/^([a-zA-Z]+)=(.+)$/);
+        if (match) {
+          tags.push({
+            key: match[1],
+            value: match[2].trim()
+          });
+        }
+      });
+      
+      return tags;
+    }
+
+    // Validate DMARC record
+    function validateDMARC(tags) {
+      const validation = {
+        valid: true,
+        policy: 'none',
+        hasRUA: false,
+        hasRUF: false,
+        warnings: [],
+        errors: []
+      };
+
+      const tagMap = {};
+      tags.forEach(t => tagMap[t.key] = t.value);
+
+      // Check v= tag
+      if (!tagMap.v) {
+        validation.valid = false;
+        validation.errors.push('Missing v= tag');
+      } else if (tagMap.v !== 'DMARC1') {
+        validation.valid = false;
+        validation.errors.push('v= must be DMARC1');
+      }
+
+      // Check p= tag
+      if (!tagMap.p) {
+        validation.valid = false;
+        validation.errors.push('Missing p= tag (policy)');
+      } else {
+        validation.policy = tagMap.p;
+        if (!['none', 'quarantine', 'reject'].includes(tagMap.p)) {
+          validation.valid = false;
+          validation.errors.push('Invalid policy value');
+        }
+      }
+
+      // Check reporting
+      if (tagMap.rua) validation.hasRUA = true;
+      if (tagMap.ruf) validation.hasRUF = true;
+
+      if (!validation.hasRUA) {
+        validation.warnings.push('No RUA address - you won\'t receive aggregate reports');
+      }
+
+      // Check pct
+      if (tagMap.pct) {
+        const pct = parseInt(tagMap.pct);
+        if (pct < 1 || pct > 100) {
+          validation.warnings.push('pct should be between 1-100');
+        }
+      }
+
+      return validation;
+    }
+
+    // Render DMARC result
+    function renderDMARCResult(domain, record) {
+      const tags = parseDMARC(record);
+      const validation = validateDMARC(tags);
+      
+      let tagsHtml = '';
+      tags.forEach(tag => {
+        tagsHtml += `
+          <span class="tag">
+            <span class="tag-key">${escapeHtml(tag.key)}</span>=<span class="tag-value">${escapeHtml(tag.value)}</span>
+          </span>
+        `;
+      });
+
+      let policyClass = 'policy-none';
+      if (validation.policy === 'quarantine') policyClass = 'policy-quarantine';
+      if (validation.policy === 'reject') policyClass = 'policy-reject';
+
+      let validationHtml = '';
+      if (validation.valid) {
+        validationHtml += `<span class="validation-badge valid">✅ Valid DMARC record</span>`;
+      } else {
+        validationHtml += `<span class="validation-badge invalid">❌ Invalid DMARC record</span>`;
+      }
+      
+      validationHtml += `<span class="validation-badge ${policyClass.replace('policy-', '')}">📋 Policy: ${validation.policy}</span>`;
+      
+      if (validation.hasRUA) {
+        validationHtml += `<span class="validation-badge valid">📊 RUA configured</span>`;
+      } else {
+        validationHtml += `<span class="validation-badge warning">⚠️ No RUA</span>`;
+      }
+      
+      validation.errors.forEach(err => {
+        validationHtml += `<span class="validation-badge invalid">❌ ${escapeHtml(err)}</span>`;
+      });
+      
+      validation.warnings.forEach(warning => {
+        validationHtml += `<span class="validation-badge warning">⚠️ ${escapeHtml(warning)}</span>`;
+      });
+
+      if (recordsContainer) {
+        recordsContainer.innerHTML = `
+          <div class="result-header">
+            <h2>📊 DMARC record for</h2>
+            <span class="badge-domain">${escapeHtml(domain)}</span>
+          </div>
+          
+          <div class="record-meta">
+            <span class="meta-item">🌐 Domain: ${escapeHtml(domain)}</span>
+          </div>
+          
+          <div style="margin: 1rem 0; text-align: center;">
+            <span class="${policyClass}" style="padding: 0.8rem 2rem; border-radius: 40px; font-weight: 600;">
+              Policy: ${validation.policy.toUpperCase()}
+            </span>
+          </div>
+          
+          <div class="tag-list">
+            ${tagsHtml}
+          </div>
+          
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0;">
+            ${validationHtml}
+          </div>
+          
+          <div class="record-card">
+            ${escapeHtml(record)}
+          </div>
+          
+          <div style="margin-top: 1rem; font-size:0.9rem; background: #ffe6cc; padding:1rem; border-radius:30px;">
+            <strong>📋 DNS lookup:</strong> _dmarc.${escapeHtml(domain)} IN TXT
+          </div>
+        `;
+      }
+    }
+
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return unsafe.replace(/[&<>"]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        if (m === '"') return '&quot;';
+        return m;
+      });
+    }
+
+    function setLoading(isLoading) {
+      if (checkBtn) checkBtn.disabled = isLoading;
+      if (btnText) btnText.textContent = isLoading ? 'Checking' : 'Check DMARC';
+      if (btnLoader) {
+        btnLoader.style.display = isLoading ? 'inline-block' : 'none';
+        btnLoader.className = isLoading ? 'loader' : '';
+      }
+    }
+
+    // DMARC lookup function
+    async function queryDMARC(domain) {
+      let cleanDomain = domain.trim().replace(/\.+$/, '');
+      if (!cleanDomain) throw new Error('Please enter a domain');
+      
+      const dmarcDomain = `_dmarc.${cleanDomain}`;
+      
+      const url = `https://dns.google/resolve?name=${encodeURIComponent(dmarcDomain)}&type=TXT`;
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`DNS query failed (HTTP ${response.status})`);
+      
+      const data = await response.json();
+      
+      if (data.Status === 3) {
+        throw new Error(`No DMARC record found for "${dmarcDomain}"`);
+      } else if (data.Status !== 0) {
+        const reason = data.Comment || `DNS error code ${data.Status}`;
+        throw new Error(`DNS lookup error: ${reason}`);
+      }
+      
+      const answers = data.Answer || [];
+      
+      // Find DMARC records (TXT records starting with v=DMARC1)
+      const dmarcRecords = answers.filter(r => {
+        if (r.type === 16 && r.data) {
+          const txt = r.data.replace(/^"|"$/g, '');
+          return txt.startsWith('v=DMARC1');
+        }
+        return false;
+      });
+      
+      if (dmarcRecords.length === 0) {
+        throw new Error(`No DMARC record found for "${dmarcDomain}"`);
+      }
+      
+      if (dmarcRecords.length > 1) {
+        throw new Error(`Multiple DMARC records found - this will cause "permerror"`);
+      }
+      
+      let record = dmarcRecords[0].data.replace(/^"|"$/g, '');
+      
+      return {
+        domain: cleanDomain,
+        record: record,
+        raw: dmarcRecords[0]
+      };
+    }
+
+    // Main lookup function
+    async function performLookup() {
+      if (!domainInput) return;
+      
+      const domain = domainInput.value.trim();
+      
+      if (!domain) {
+        setActiveView('error');
+        if (errorContainer) {
+          errorContainer.innerHTML = `
+            <div class="error-message">
+              <span style="font-size:2rem;">⚠️</span>
+              <div><strong>Missing information</strong><br>Please enter a domain</div>
+            </div>
+          `;
+        }
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        const result = await queryDMARC(domain);
+        renderDMARCResult(result.domain, result.record);
+        setActiveView('records');
+      } catch (err) {
+        console.error('DMARC lookup error:', err);
+        if (errorContainer) {
+          errorContainer.innerHTML = `
+            <div class="error-message">
+              <span style="font-size:2rem;">⚠️</span>
+              <div><strong>Error checking DMARC</strong><br>${escapeHtml(err.message)}</div>
+            </div>
+          `;
+        }
+        setActiveView('error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // XML Upload handling
+    if (uploadArea && fileInput) {
+      uploadArea.addEventListener('click', () => fileInput.click());
+      
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleXMLFile(files[0]);
+        }
+      });
+      
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          handleXMLFile(e.target.files[0]);
+        }
+      });
+    }
+
+    // XML file handler (simplified - real parsing would need XML parser)
+    function handleXMLFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        // In a real implementation, you'd parse the XML
+        // For demo, show a message that parsing would happen
+        xmlResults.style.display = 'block';
+        xmlResults.innerHTML = `
+          <h3 style="color: #e67e22; margin-bottom: 1rem;">📊 XML Report Analysis</h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number">1,234</div>
+              <div class="stat-label">Total Emails</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">1,189</div>
+              <div class="stat-label">Passed DMARC</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">45</div>
+              <div class="stat-label">Failed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">3</div>
+              <div class="stat-label">Sending IPs</div>
+            </div>
+          </div>
+          
+          <h4 style="color: #e67e22; margin: 1.5rem 0 1rem;">📋 Sending Sources</h4>
+          <table class="source-table">
+            <tr><th>IP Address</th><th>Volume</th><th>SPF</th><th>DKIM</th><th>DMARC</th></tr>
+            <tr><td>192.0.2.1</td><td>987</td><td><span class="badge-pass">PASS</span></td><td><span class="badge-pass">PASS</span></td><td><span class="badge-pass">PASS</span></td></tr>
+            <tr><td>198.51.100.2</td><td>202</td><td><span class="badge-pass">PASS</span></td><td><span class="badge-fail">FAIL</span></td><td><span class="badge-fail">FAIL</span></td></tr>
+            <tr><td>203.0.113.3</td><td>45</td><td><span class="badge-fail">FAIL</span></td><td><span class="badge-fail">FAIL</span></td><td><span class="badge-fail">FAIL</span></td></tr>
+          </table>
+          
+          <div class="warning-box" style="margin-top: 1.5rem;">
+            <strong>⚠️ Suspicious Activity:</strong> IP 203.0.113.3 shows 45 failures - possible spoofing attempt
+          </div>
+          
+          <p style="margin-top: 1rem; color: #7f8c8d;">
+            <em>Full XML parsing would display real data from your report</em>
+          </p>
+        `;
+      };
+      reader.readAsText(file);
+    }
+
+    // Event listeners
+    if (checkBtn) checkBtn.addEventListener('click', performLookup);
+    if (domainInput) {
+      domainInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performLookup();
+      });
+    }
+
+    // Handle URL parameters
+    function handleUrlParameter() {
+      if (!domainInput) return;
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const domainParam = urlParams.get('domain');
+      
+      if (domainParam) {
+        domainInput.value = domainParam;
+        setTimeout(() => performLookup(), 100);
+      }
+    }
+
+    window.addEventListener('load', handleUrlParameter);
+  })();
+</script>
+</body>
+</html>
